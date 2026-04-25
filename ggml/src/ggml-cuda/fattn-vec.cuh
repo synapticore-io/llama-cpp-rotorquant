@@ -75,8 +75,17 @@ static __global__ void flash_attn_ext_vec(
 #endif // GGML_USE_HIP
 
     constexpr int nthreads    = ggml_cuda_fattn_vec_get_nthreads_device();
-    // Turbo3 uses the float Q path (like f16/bf16), not q8_1 integer path
-    constexpr bool K_is_unquantized = (type_K == GGML_TYPE_F16 || type_K == GGML_TYPE_BF16 || type_K == GGML_TYPE_TURBO3_0 || type_K == GGML_TYPE_TURBO2_0 || type_K == GGML_TYPE_TURBO4_0);
+    // Turbo/Planar/Iso K dequantizers dot against Q_v directly (like f16/bf16),
+    // so Q must stay in the float/half register path instead of q8_1.
+    constexpr bool K_is_unquantized = (type_K == GGML_TYPE_F16 ||
+                                       type_K == GGML_TYPE_BF16 ||
+                                       type_K == GGML_TYPE_TURBO3_0 ||
+                                       type_K == GGML_TYPE_TURBO2_0 ||
+                                       type_K == GGML_TYPE_TURBO4_0 ||
+                                       type_K == GGML_TYPE_PLANAR3_0 ||
+                                       type_K == GGML_TYPE_ISO3_0 ||
+                                       type_K == GGML_TYPE_PLANAR4_0 ||
+                                       type_K == GGML_TYPE_ISO4_0);
     constexpr bool V_is_unquantized = (type_V == GGML_TYPE_F16 || type_V == GGML_TYPE_BF16 || type_V == GGML_TYPE_TURBO3_0 || type_V == GGML_TYPE_TURBO2_0 || type_V == GGML_TYPE_TURBO4_0);
     constexpr int nthreads_KQ = K_is_unquantized ? 128 / cpy_nb : nthreads_KQ_q;
     constexpr int nthreads_V  = V_is_unquantized ? ((type_V == GGML_TYPE_TURBO3_0 || type_V == GGML_TYPE_TURBO2_0 || type_V == GGML_TYPE_TURBO4_0) ? nthreads_V_q : 128 / cpy_nb) : nthreads_V_q;
